@@ -1,4 +1,4 @@
-use std::{iter::from_fn, str::Chars};
+use std::iter::from_fn;
 
 #[derive(Clone, Copy, Debug)]
 pub struct Token {
@@ -62,19 +62,19 @@ pub enum TokenKind {
     EndOfInput,
 }
 
-pub struct Lexer<'a> {
-    chars: Chars<'a>,
+struct Lexer<Chars> {
+    chars: Chars,
+    text: String,
 }
 
-impl<'a> Lexer<'a> {
-    pub fn advance_token(&mut self) -> Token {
-        let remaining_text = self.chars.as_str();
+impl<Chars> Lexer<Chars>
+where
+    Chars: Iterator<Item = char> + Clone,
+{
+    fn advance_token(&mut self) -> Token {
+        self.text.clear();
 
-        let Some(c) = self.bump() else {
-            return Token::new(TokenKind::EndOfInput, 0);
-        };
-
-        let kind = match c {
+        let kind = self.bump().map_or(TokenKind::EndOfInput, |c| match c {
             '(' => TokenKind::LeftParen,
             ')' => TokenKind::RightParen,
             '{' => TokenKind::LeftBrace,
@@ -85,26 +85,31 @@ impl<'a> Lexer<'a> {
             '+' => TokenKind::Plus,
             ';' => TokenKind::Semicolon,
             '*' => TokenKind::Star,
-            '/' => self.match_next('/', Lexer::comment, TokenKind::Slash),
+            '/' => self.match_next('/', Self::comment, TokenKind::Slash),
             '!' => self.match_next('=', |_| TokenKind::BangEqual, TokenKind::Bang),
             '=' => self.match_next('=', |_| TokenKind::EqualEqual, TokenKind::Equal),
             '<' => self.match_next('=', |_| TokenKind::LessEqual, TokenKind::Less),
             '>' => self.match_next('=', |_| TokenKind::GreaterEqual, TokenKind::Greater),
             '"' => self.string(),
             c if is_digit(c) => self.number(),
-            c if is_alpha(c) => self.identifier(remaining_text),
+            c if is_alpha(c) => self.identifier(),
             c if is_whitespace(c) => self.whitespace(),
             _ => TokenKind::Unknown,
-        };
+        });
 
         Token::new(
             kind,
-            u32::try_from(self.scanned_length(remaining_text)).expect("token too long"),
+            u32::try_from(self.text.len()).expect("token too long"),
         )
     }
 
     fn bump(&mut self) -> Option<char> {
-        self.chars.next()
+        if let Some(c) = self.chars.next() {
+            self.text.push(c);
+            Some(c)
+        } else {
+            None
+        }
     }
 
     fn comment(&mut self) -> TokenKind {
@@ -120,10 +125,10 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    fn identifier(&mut self, remaining_text: &str) -> TokenKind {
+    fn identifier(&mut self) -> TokenKind {
         self.eat_while(is_alphanumeric);
 
-        match &remaining_text[..self.scanned_length(remaining_text)] {
+        match self.text.as_str() {
             "and" => TokenKind::And,
             "class" => TokenKind::Class,
             "else" => TokenKind::Else,
@@ -162,9 +167,10 @@ impl<'a> Lexer<'a> {
         self.chars.clone().next().unwrap_or_default()
     }
 
-    pub fn new(input: &'a str) -> Self {
+    fn new(chars: Chars) -> Self {
         Self {
-            chars: input.chars(),
+            chars,
+            text: String::new(),
         }
     }
 
@@ -179,10 +185,6 @@ impl<'a> Lexer<'a> {
         }
 
         TokenKind::Number
-    }
-
-    fn scanned_length(&self, original_remaining_text: &str) -> usize {
-        original_remaining_text.len() - self.chars.as_str().len()
     }
 
     fn string(&mut self) -> TokenKind {
@@ -218,7 +220,7 @@ const fn is_whitespace(c: char) -> bool {
 }
 
 pub fn tokenize(input: &str) -> impl Iterator<Item = Token> + '_ {
-    let mut lexer = Lexer::new(input);
+    let mut lexer = Lexer::new(input.chars());
     let mut next_token: Option<Token> = None;
 
     from_fn(move || {
@@ -250,27 +252,23 @@ pub fn tokenize(input: &str) -> impl Iterator<Item = Token> + '_ {
     })
 }
 
+pub fn tokenize_with_text(input: &str) -> impl Iterator<Item = (TokenKind, &str)> {
+    let tokens = tokenize(input);
+    let mut position = 0;
+
+    tokens.map(move |token| {
+        let length = token.length as usize;
+        let text = &input[position..position + length];
+
+        position += length;
+
+        (token.kind, text)
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    fn tokenize_with_text(input: &str) -> impl Iterator<Item = (TokenKind, &str)> {
-        let mut tokens = tokenize(input);
-        let mut position = 0;
-
-        from_fn(move || {
-            if let Some(token) = tokens.next() {
-                let length = token.length as usize;
-                let text = &input[position..position + length];
-
-                position += length;
-
-                Some((token.kind, text))
-            } else {
-                None
-            }
-        })
-    }
 
     #[test]
     fn comments() {

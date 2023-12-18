@@ -6,7 +6,7 @@ use std::{
     process::exit,
 };
 
-use lexer::tokenize;
+use lexer::tokenize_with_text;
 
 mod lexer;
 
@@ -24,8 +24,8 @@ fn main() -> Result<()> {
 }
 
 fn run(source: &str) {
-    for token in tokenize(source) {
-        println!("{token:?}");
+    for (kind, text) in tokenize_with_text(source) {
+        println!("{kind:?} {text:?}");
     }
 }
 
