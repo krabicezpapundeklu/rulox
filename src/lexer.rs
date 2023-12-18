@@ -401,7 +401,8 @@ mod tests {
 
     #[test]
     fn strings() {
-        let mut tokens = tokenize_with_text(r#""" "string" "this string has no close quote"#);
+        let mut tokens =
+            tokenize_with_text(r#""" "stringěščřžýáíé" "this string has no close quote"#);
 
         assert_eq!(
             tokens.next(),
@@ -412,7 +413,10 @@ mod tests {
 
         assert_eq!(
             tokens.next(),
-            Some((TokenKind::String { terminated: true }, r#""string""#))
+            Some((
+                TokenKind::String { terminated: true },
+                r#""stringěščřžýáíé""#
+            ))
         );
 
         assert_eq!(tokens.next(), Some((TokenKind::Whitespace, " ")));
