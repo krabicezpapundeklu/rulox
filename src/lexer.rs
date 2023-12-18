@@ -1,6 +1,6 @@
 use std::{iter::from_fn, str::Chars};
 
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug)]
 pub struct Token {
     kind: TokenKind,
     length: u32,
@@ -219,14 +219,33 @@ const fn is_whitespace(c: char) -> bool {
 
 pub fn tokenize(input: &str) -> impl Iterator<Item = Token> + '_ {
     let mut lexer = Lexer::new(input);
+    let mut next_token: Option<Token> = None;
 
     from_fn(move || {
-        let token = lexer.advance_token();
+        let mut token = next_token.map_or_else(
+            || lexer.advance_token(),
+            |token| {
+                next_token = None;
+                token
+            },
+        );
 
-        if token.kind == TokenKind::EndOfInput {
-            None
-        } else {
-            Some(token)
+        match token.kind {
+            TokenKind::EndOfInput => None,
+            TokenKind::Unknown => {
+                let mut length = 0;
+
+                loop {
+                    length += token.length;
+                    token = lexer.advance_token();
+
+                    if token.kind != TokenKind::Unknown {
+                        next_token = Some(token);
+                        return Some(Token::new(TokenKind::Unknown, length));
+                    }
+                }
+            }
+            _ => Some(token),
         }
     })
 }
@@ -408,6 +427,17 @@ mod tests {
             ))
         );
 
+        assert_eq!(tokens.next(), None);
+    }
+
+    #[test]
+    fn unknown() {
+        let mut tokens = tokenize_with_text("knowněščřžýáíéknown$");
+
+        assert_eq!(tokens.next(), Some((TokenKind::Identifier, "known")));
+        assert_eq!(tokens.next(), Some((TokenKind::Unknown, "ěščřžýáíé")));
+        assert_eq!(tokens.next(), Some((TokenKind::Identifier, "known")));
+        assert_eq!(tokens.next(), Some((TokenKind::Unknown, "$")));
         assert_eq!(tokens.next(), None);
     }
 
