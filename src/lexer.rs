@@ -68,7 +68,7 @@ pub struct Lexer<'a> {
 
 impl<'a> Lexer<'a> {
     pub fn advance_token(&mut self) -> Token {
-        let remaining = self.chars.as_str();
+        let remaining_text = self.chars.as_str();
 
         let Some(c) = self.bump() else {
             return Token::new(TokenKind::EndOfInput, 0);
@@ -85,27 +85,21 @@ impl<'a> Lexer<'a> {
             '+' => TokenKind::Plus,
             ';' => TokenKind::Semicolon,
             '*' => TokenKind::Star,
-            '/' => {
-                if self.peek() == '/' {
-                    self.comment()
-                } else {
-                    TokenKind::Slash
-                }
-            }
-            '!' => self.match_next('=', TokenKind::BangEqual, TokenKind::Bang),
-            '=' => self.match_next('=', TokenKind::EqualEqual, TokenKind::Equal),
-            '<' => self.match_next('=', TokenKind::LessEqual, TokenKind::Less),
-            '>' => self.match_next('=', TokenKind::GreaterEqual, TokenKind::Greater),
+            '/' => self.match_next('/', Lexer::comment, TokenKind::Slash),
+            '!' => self.match_next('=', |_| TokenKind::BangEqual, TokenKind::Bang),
+            '=' => self.match_next('=', |_| TokenKind::EqualEqual, TokenKind::Equal),
+            '<' => self.match_next('=', |_| TokenKind::LessEqual, TokenKind::Less),
+            '>' => self.match_next('=', |_| TokenKind::GreaterEqual, TokenKind::Greater),
             '"' => self.string(),
             c if is_digit(c) => self.number(),
-            c if is_alpha(c) => self.identifier(remaining),
+            c if is_alpha(c) => self.identifier(remaining_text),
             c if is_whitespace(c) => self.whitespace(),
             _ => TokenKind::Unknown,
         };
 
         Token::new(
             kind,
-            u32::try_from(self.length(remaining)).expect("token too long"),
+            u32::try_from(self.scanned_length(remaining_text)).expect("token too long"),
         )
     }
 
@@ -114,12 +108,11 @@ impl<'a> Lexer<'a> {
     }
 
     fn comment(&mut self) -> TokenKind {
-        self.bump();
         self.eat_while(|c| c != '\n');
         TokenKind::Comment
     }
 
-    fn eat_while(&mut self, mut predicate: impl FnMut(char) -> bool) {
+    fn eat_while(&mut self, predicate: impl Fn(char) -> bool) {
         let mut chars = self.chars.clone();
 
         while matches!(chars.next(), Some(c) if predicate(c)) {
@@ -127,10 +120,10 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    fn identifier(&mut self, remaining: &str) -> TokenKind {
+    fn identifier(&mut self, remaining_text: &str) -> TokenKind {
         self.eat_while(is_alphanumeric);
 
-        match &remaining[..self.length(remaining)] {
+        match &remaining_text[..self.scanned_length(remaining_text)] {
             "and" => TokenKind::And,
             "class" => TokenKind::Class,
             "else" => TokenKind::Else,
@@ -151,19 +144,15 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    fn length(&self, original_remaining: &str) -> usize {
-        original_remaining.len() - self.chars.as_str().len()
-    }
-
     fn match_next(
         &mut self,
         expected: char,
-        matches: TokenKind,
+        matches: impl Fn(&mut Self) -> TokenKind,
         does_not_match: TokenKind,
     ) -> TokenKind {
         if self.peek() == expected {
             self.bump();
-            matches
+            matches(self)
         } else {
             does_not_match
         }
@@ -190,6 +179,10 @@ impl<'a> Lexer<'a> {
         }
 
         TokenKind::Number
+    }
+
+    fn scanned_length(&self, original_remaining_text: &str) -> usize {
+        original_remaining_text.len() - self.chars.as_str().len()
     }
 
     fn string(&mut self) -> TokenKind {
