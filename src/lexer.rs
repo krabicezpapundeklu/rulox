@@ -12,54 +12,66 @@ impl Token {
     }
 }
 
+#[allow(clippy::upper_case_acronyms)]
+#[allow(non_camel_case_types)]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum TokenKind {
-    LeftParen,
-    RightParen,
-    LeftBrace,
-    RightBrace,
-    Comma,
-    Dot,
-    Minus,
-    Plus,
-    Semicolon,
-    Slash,
-    Star,
+    LEFT_PAREN,
+    RIGHT_PAREN,
+    LEFT_BRACE,
+    RIGHT_BRACE,
+    COMMA,
+    DOT,
+    MINUS,
+    PLUS,
+    SEMICOLON,
+    SLASH,
+    STAR,
 
-    Bang,
-    BangEqual,
-    Equal,
-    EqualEqual,
-    Greater,
-    GreaterEqual,
-    Less,
-    LessEqual,
+    BANG,
+    BANG_EQUAL,
+    EQUAL,
+    EQUAL_EQUAL,
+    GREATER,
+    GREATER_EQUAL,
+    LESS,
+    LESS_EQUAL,
 
-    Identifier,
-    String { terminated: bool },
-    Number,
+    IDENTIFIER,
+    STRING { terminated: bool },
+    NUMBER,
 
-    And,
-    Class,
-    Else,
-    False,
-    Fun,
-    For,
-    If,
-    Nil,
-    Or,
-    Print,
-    Return,
-    Super,
-    This,
-    True,
-    Var,
-    While,
+    AND,
+    CLASS,
+    ELSE,
+    FALSE,
+    FUN,
+    FOR,
+    IF,
+    NIL,
+    OR,
+    PRINT,
+    RETURN,
+    SUPER,
+    THIS,
+    TRUE,
+    VAR,
+    WHILE,
 
-    Comment,
-    Whitespace,
-    Unknown,
-    EndOfInput,
+    COMMENT,
+    WHITESPACE,
+    UNKNOWN,
+    EOF,
+}
+
+impl TokenKind {
+    pub const fn is_multiline_token(self) -> bool {
+        matches!(self, Self::STRING { .. } | Self::WHITESPACE)
+    }
+
+    pub const fn is_trivia_token(self) -> bool {
+        matches!(self, Self::COMMENT | Self::WHITESPACE)
+    }
 }
 
 struct Lexer<Chars> {
@@ -74,27 +86,27 @@ where
     fn advance_token(&mut self) -> Token {
         self.text.clear();
 
-        let kind = self.bump().map_or(TokenKind::EndOfInput, |c| match c {
-            '(' => TokenKind::LeftParen,
-            ')' => TokenKind::RightParen,
-            '{' => TokenKind::LeftBrace,
-            '}' => TokenKind::RightBrace,
-            ',' => TokenKind::Comma,
-            '.' => TokenKind::Dot,
-            '-' => TokenKind::Minus,
-            '+' => TokenKind::Plus,
-            ';' => TokenKind::Semicolon,
-            '*' => TokenKind::Star,
-            '/' => self.match_next('/', Self::comment, TokenKind::Slash),
-            '!' => self.match_next('=', |_| TokenKind::BangEqual, TokenKind::Bang),
-            '=' => self.match_next('=', |_| TokenKind::EqualEqual, TokenKind::Equal),
-            '<' => self.match_next('=', |_| TokenKind::LessEqual, TokenKind::Less),
-            '>' => self.match_next('=', |_| TokenKind::GreaterEqual, TokenKind::Greater),
+        let kind = self.bump().map_or(TokenKind::EOF, |c| match c {
+            '(' => TokenKind::LEFT_PAREN,
+            ')' => TokenKind::RIGHT_PAREN,
+            '{' => TokenKind::LEFT_BRACE,
+            '}' => TokenKind::RIGHT_BRACE,
+            ',' => TokenKind::COMMA,
+            '.' => TokenKind::DOT,
+            '-' => TokenKind::MINUS,
+            '+' => TokenKind::PLUS,
+            ';' => TokenKind::SEMICOLON,
+            '*' => TokenKind::STAR,
+            '/' => self.match_next('/', Self::comment, TokenKind::SLASH),
+            '!' => self.match_next('=', |_| TokenKind::BANG_EQUAL, TokenKind::BANG),
+            '=' => self.match_next('=', |_| TokenKind::EQUAL_EQUAL, TokenKind::EQUAL),
+            '<' => self.match_next('=', |_| TokenKind::LESS_EQUAL, TokenKind::LESS),
+            '>' => self.match_next('=', |_| TokenKind::GREATER_EQUAL, TokenKind::GREATER),
             '"' => self.string(),
             c if is_digit(c) => self.number(),
             c if is_alpha(c) => self.identifier(),
             c if is_whitespace(c) => self.whitespace(),
-            _ => TokenKind::Unknown,
+            _ => TokenKind::UNKNOWN,
         });
 
         Token::new(
@@ -114,7 +126,7 @@ where
 
     fn comment(&mut self) -> TokenKind {
         self.eat_while(|c| c != '\n');
-        TokenKind::Comment
+        TokenKind::COMMENT
     }
 
     fn eat_while(&mut self, predicate: impl Fn(char) -> bool) {
@@ -129,23 +141,23 @@ where
         self.eat_while(is_alphanumeric);
 
         match self.text.as_str() {
-            "and" => TokenKind::And,
-            "class" => TokenKind::Class,
-            "else" => TokenKind::Else,
-            "false" => TokenKind::False,
-            "for" => TokenKind::For,
-            "fun" => TokenKind::Fun,
-            "if" => TokenKind::If,
-            "nil" => TokenKind::Nil,
-            "or" => TokenKind::Or,
-            "print" => TokenKind::Print,
-            "return" => TokenKind::Return,
-            "super" => TokenKind::Super,
-            "this" => TokenKind::This,
-            "true" => TokenKind::True,
-            "var" => TokenKind::Var,
-            "while" => TokenKind::While,
-            _ => TokenKind::Identifier,
+            "and" => TokenKind::AND,
+            "class" => TokenKind::CLASS,
+            "else" => TokenKind::ELSE,
+            "false" => TokenKind::FALSE,
+            "for" => TokenKind::FOR,
+            "fun" => TokenKind::FUN,
+            "if" => TokenKind::IF,
+            "nil" => TokenKind::NIL,
+            "or" => TokenKind::OR,
+            "print" => TokenKind::PRINT,
+            "return" => TokenKind::RETURN,
+            "super" => TokenKind::SUPER,
+            "this" => TokenKind::THIS,
+            "true" => TokenKind::TRUE,
+            "var" => TokenKind::VAR,
+            "while" => TokenKind::WHILE,
+            _ => TokenKind::IDENTIFIER,
         }
     }
 
@@ -184,22 +196,22 @@ where
             self.eat_while(is_digit);
         }
 
-        TokenKind::Number
+        TokenKind::NUMBER
     }
 
     fn string(&mut self) -> TokenKind {
         while let Some(c) = self.bump() {
             if c == '"' {
-                return TokenKind::String { terminated: true };
+                return TokenKind::STRING { terminated: true };
             }
         }
 
-        TokenKind::String { terminated: false }
+        TokenKind::STRING { terminated: false }
     }
 
     fn whitespace(&mut self) -> TokenKind {
         self.eat_while(is_whitespace);
-        TokenKind::Whitespace
+        TokenKind::WHITESPACE
     }
 }
 
@@ -221,34 +233,20 @@ const fn is_whitespace(c: char) -> bool {
 
 pub fn tokenize(input: &str) -> impl Iterator<Item = Token> + '_ {
     let mut lexer = Lexer::new(input.chars());
-    let mut next_token: Option<Token> = None;
+    let mut has_eof = false;
 
     from_fn(move || {
-        let mut token = next_token.map_or_else(
-            || lexer.advance_token(),
-            |token| {
-                next_token = None;
-                token
-            },
-        );
-
-        match token.kind {
-            TokenKind::EndOfInput => None,
-            TokenKind::Unknown => {
-                let mut length = 0;
-
-                loop {
-                    length += token.length;
-                    token = lexer.advance_token();
-
-                    if token.kind != TokenKind::Unknown {
-                        next_token = Some(token);
-                        return Some(Token::new(TokenKind::Unknown, length));
-                    }
-                }
-            }
-            _ => Some(token),
+        if has_eof {
+            return None;
         }
+
+        let token = lexer.advance_token();
+
+        if token.kind == TokenKind::EOF {
+            has_eof = true;
+        }
+
+        Some(token)
     })
 }
 
@@ -274,17 +272,20 @@ mod tests {
     fn comments() {
         let mut tokens = tokenize_with_text("//\n// comment\n///");
 
-        assert_eq!(tokens.next(), Some((TokenKind::Comment, "//")));
-        assert_eq!(tokens.next(), Some((TokenKind::Whitespace, "\n")));
-        assert_eq!(tokens.next(), Some((TokenKind::Comment, "// comment")));
-        assert_eq!(tokens.next(), Some((TokenKind::Whitespace, "\n")));
-        assert_eq!(tokens.next(), Some((TokenKind::Comment, "///")));
+        assert_eq!(tokens.next(), Some((TokenKind::COMMENT, "//")));
+        assert_eq!(tokens.next(), Some((TokenKind::WHITESPACE, "\n")));
+        assert_eq!(tokens.next(), Some((TokenKind::COMMENT, "// comment")));
+        assert_eq!(tokens.next(), Some((TokenKind::WHITESPACE, "\n")));
+        assert_eq!(tokens.next(), Some((TokenKind::COMMENT, "///")));
+        assert_eq!(tokens.next(), Some((TokenKind::EOF, "")));
         assert_eq!(tokens.next(), None);
     }
 
     #[test]
     fn empty() {
         let mut tokens = tokenize_with_text("");
+
+        assert_eq!(tokens.next(), Some((TokenKind::EOF, "")));
         assert_eq!(tokens.next(), None);
     }
 
@@ -294,29 +295,30 @@ mod tests {
             "andy formless fo _ _123 _abc ab123\nabcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890_"
         );
 
-        assert_eq!(tokens.next(), Some((TokenKind::Identifier, "andy")));
-        assert_eq!(tokens.next(), Some((TokenKind::Whitespace, " ")));
-        assert_eq!(tokens.next(), Some((TokenKind::Identifier, "formless")));
-        assert_eq!(tokens.next(), Some((TokenKind::Whitespace, " ")));
-        assert_eq!(tokens.next(), Some((TokenKind::Identifier, "fo")));
-        assert_eq!(tokens.next(), Some((TokenKind::Whitespace, " ")));
-        assert_eq!(tokens.next(), Some((TokenKind::Identifier, "_")));
-        assert_eq!(tokens.next(), Some((TokenKind::Whitespace, " ")));
-        assert_eq!(tokens.next(), Some((TokenKind::Identifier, "_123")));
-        assert_eq!(tokens.next(), Some((TokenKind::Whitespace, " ")));
-        assert_eq!(tokens.next(), Some((TokenKind::Identifier, "_abc")));
-        assert_eq!(tokens.next(), Some((TokenKind::Whitespace, " ")));
-        assert_eq!(tokens.next(), Some((TokenKind::Identifier, "ab123")));
-        assert_eq!(tokens.next(), Some((TokenKind::Whitespace, "\n")));
+        assert_eq!(tokens.next(), Some((TokenKind::IDENTIFIER, "andy")));
+        assert_eq!(tokens.next(), Some((TokenKind::WHITESPACE, " ")));
+        assert_eq!(tokens.next(), Some((TokenKind::IDENTIFIER, "formless")));
+        assert_eq!(tokens.next(), Some((TokenKind::WHITESPACE, " ")));
+        assert_eq!(tokens.next(), Some((TokenKind::IDENTIFIER, "fo")));
+        assert_eq!(tokens.next(), Some((TokenKind::WHITESPACE, " ")));
+        assert_eq!(tokens.next(), Some((TokenKind::IDENTIFIER, "_")));
+        assert_eq!(tokens.next(), Some((TokenKind::WHITESPACE, " ")));
+        assert_eq!(tokens.next(), Some((TokenKind::IDENTIFIER, "_123")));
+        assert_eq!(tokens.next(), Some((TokenKind::WHITESPACE, " ")));
+        assert_eq!(tokens.next(), Some((TokenKind::IDENTIFIER, "_abc")));
+        assert_eq!(tokens.next(), Some((TokenKind::WHITESPACE, " ")));
+        assert_eq!(tokens.next(), Some((TokenKind::IDENTIFIER, "ab123")));
+        assert_eq!(tokens.next(), Some((TokenKind::WHITESPACE, "\n")));
 
         assert_eq!(
             tokens.next(),
             Some((
-                TokenKind::Identifier,
+                TokenKind::IDENTIFIER,
                 "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890_"
             ))
         );
 
+        assert_eq!(tokens.next(), Some((TokenKind::EOF, "")));
         assert_eq!(tokens.next(), None);
     }
 
@@ -326,35 +328,36 @@ mod tests {
             "and class else false for fun if nil or return super this true var while",
         );
 
-        assert_eq!(tokens.next(), Some((TokenKind::And, "and")));
-        assert_eq!(tokens.next(), Some((TokenKind::Whitespace, " ")));
-        assert_eq!(tokens.next(), Some((TokenKind::Class, "class")));
-        assert_eq!(tokens.next(), Some((TokenKind::Whitespace, " ")));
-        assert_eq!(tokens.next(), Some((TokenKind::Else, "else")));
-        assert_eq!(tokens.next(), Some((TokenKind::Whitespace, " ")));
-        assert_eq!(tokens.next(), Some((TokenKind::False, "false")));
-        assert_eq!(tokens.next(), Some((TokenKind::Whitespace, " ")));
-        assert_eq!(tokens.next(), Some((TokenKind::For, "for")));
-        assert_eq!(tokens.next(), Some((TokenKind::Whitespace, " ")));
-        assert_eq!(tokens.next(), Some((TokenKind::Fun, "fun")));
-        assert_eq!(tokens.next(), Some((TokenKind::Whitespace, " ")));
-        assert_eq!(tokens.next(), Some((TokenKind::If, "if")));
-        assert_eq!(tokens.next(), Some((TokenKind::Whitespace, " ")));
-        assert_eq!(tokens.next(), Some((TokenKind::Nil, "nil")));
-        assert_eq!(tokens.next(), Some((TokenKind::Whitespace, " ")));
-        assert_eq!(tokens.next(), Some((TokenKind::Or, "or")));
-        assert_eq!(tokens.next(), Some((TokenKind::Whitespace, " ")));
-        assert_eq!(tokens.next(), Some((TokenKind::Return, "return")));
-        assert_eq!(tokens.next(), Some((TokenKind::Whitespace, " ")));
-        assert_eq!(tokens.next(), Some((TokenKind::Super, "super")));
-        assert_eq!(tokens.next(), Some((TokenKind::Whitespace, " ")));
-        assert_eq!(tokens.next(), Some((TokenKind::This, "this")));
-        assert_eq!(tokens.next(), Some((TokenKind::Whitespace, " ")));
-        assert_eq!(tokens.next(), Some((TokenKind::True, "true")));
-        assert_eq!(tokens.next(), Some((TokenKind::Whitespace, " ")));
-        assert_eq!(tokens.next(), Some((TokenKind::Var, "var")));
-        assert_eq!(tokens.next(), Some((TokenKind::Whitespace, " ")));
-        assert_eq!(tokens.next(), Some((TokenKind::While, "while")));
+        assert_eq!(tokens.next(), Some((TokenKind::AND, "and")));
+        assert_eq!(tokens.next(), Some((TokenKind::WHITESPACE, " ")));
+        assert_eq!(tokens.next(), Some((TokenKind::CLASS, "class")));
+        assert_eq!(tokens.next(), Some((TokenKind::WHITESPACE, " ")));
+        assert_eq!(tokens.next(), Some((TokenKind::ELSE, "else")));
+        assert_eq!(tokens.next(), Some((TokenKind::WHITESPACE, " ")));
+        assert_eq!(tokens.next(), Some((TokenKind::FALSE, "false")));
+        assert_eq!(tokens.next(), Some((TokenKind::WHITESPACE, " ")));
+        assert_eq!(tokens.next(), Some((TokenKind::FOR, "for")));
+        assert_eq!(tokens.next(), Some((TokenKind::WHITESPACE, " ")));
+        assert_eq!(tokens.next(), Some((TokenKind::FUN, "fun")));
+        assert_eq!(tokens.next(), Some((TokenKind::WHITESPACE, " ")));
+        assert_eq!(tokens.next(), Some((TokenKind::IF, "if")));
+        assert_eq!(tokens.next(), Some((TokenKind::WHITESPACE, " ")));
+        assert_eq!(tokens.next(), Some((TokenKind::NIL, "nil")));
+        assert_eq!(tokens.next(), Some((TokenKind::WHITESPACE, " ")));
+        assert_eq!(tokens.next(), Some((TokenKind::OR, "or")));
+        assert_eq!(tokens.next(), Some((TokenKind::WHITESPACE, " ")));
+        assert_eq!(tokens.next(), Some((TokenKind::RETURN, "return")));
+        assert_eq!(tokens.next(), Some((TokenKind::WHITESPACE, " ")));
+        assert_eq!(tokens.next(), Some((TokenKind::SUPER, "super")));
+        assert_eq!(tokens.next(), Some((TokenKind::WHITESPACE, " ")));
+        assert_eq!(tokens.next(), Some((TokenKind::THIS, "this")));
+        assert_eq!(tokens.next(), Some((TokenKind::WHITESPACE, " ")));
+        assert_eq!(tokens.next(), Some((TokenKind::TRUE, "true")));
+        assert_eq!(tokens.next(), Some((TokenKind::WHITESPACE, " ")));
+        assert_eq!(tokens.next(), Some((TokenKind::VAR, "var")));
+        assert_eq!(tokens.next(), Some((TokenKind::WHITESPACE, " ")));
+        assert_eq!(tokens.next(), Some((TokenKind::WHILE, "while")));
+        assert_eq!(tokens.next(), Some((TokenKind::EOF, "")));
         assert_eq!(tokens.next(), None);
     }
 
@@ -362,15 +365,16 @@ mod tests {
     fn numbers() {
         let mut tokens = tokenize_with_text("123 123.456 .456 123.");
 
-        assert_eq!(tokens.next(), Some((TokenKind::Number, "123")));
-        assert_eq!(tokens.next(), Some((TokenKind::Whitespace, " ")));
-        assert_eq!(tokens.next(), Some((TokenKind::Number, "123.456")));
-        assert_eq!(tokens.next(), Some((TokenKind::Whitespace, " ")));
-        assert_eq!(tokens.next(), Some((TokenKind::Dot, ".")));
-        assert_eq!(tokens.next(), Some((TokenKind::Number, "456")));
-        assert_eq!(tokens.next(), Some((TokenKind::Whitespace, " ")));
-        assert_eq!(tokens.next(), Some((TokenKind::Number, "123")));
-        assert_eq!(tokens.next(), Some((TokenKind::Dot, ".")));
+        assert_eq!(tokens.next(), Some((TokenKind::NUMBER, "123")));
+        assert_eq!(tokens.next(), Some((TokenKind::WHITESPACE, " ")));
+        assert_eq!(tokens.next(), Some((TokenKind::NUMBER, "123.456")));
+        assert_eq!(tokens.next(), Some((TokenKind::WHITESPACE, " ")));
+        assert_eq!(tokens.next(), Some((TokenKind::DOT, ".")));
+        assert_eq!(tokens.next(), Some((TokenKind::NUMBER, "456")));
+        assert_eq!(tokens.next(), Some((TokenKind::WHITESPACE, " ")));
+        assert_eq!(tokens.next(), Some((TokenKind::NUMBER, "123")));
+        assert_eq!(tokens.next(), Some((TokenKind::DOT, ".")));
+        assert_eq!(tokens.next(), Some((TokenKind::EOF, "")));
         assert_eq!(tokens.next(), None);
     }
 
@@ -378,24 +382,25 @@ mod tests {
     fn punctuators() {
         let mut tokens = tokenize_with_text("(){};,+-*!===<=>=!=<>/.");
 
-        assert_eq!(tokens.next(), Some((TokenKind::LeftParen, "(")));
-        assert_eq!(tokens.next(), Some((TokenKind::RightParen, ")")));
-        assert_eq!(tokens.next(), Some((TokenKind::LeftBrace, "{")));
-        assert_eq!(tokens.next(), Some((TokenKind::RightBrace, "}")));
-        assert_eq!(tokens.next(), Some((TokenKind::Semicolon, ";")));
-        assert_eq!(tokens.next(), Some((TokenKind::Comma, ",")));
-        assert_eq!(tokens.next(), Some((TokenKind::Plus, "+")));
-        assert_eq!(tokens.next(), Some((TokenKind::Minus, "-")));
-        assert_eq!(tokens.next(), Some((TokenKind::Star, "*")));
-        assert_eq!(tokens.next(), Some((TokenKind::BangEqual, "!=")));
-        assert_eq!(tokens.next(), Some((TokenKind::EqualEqual, "==")));
-        assert_eq!(tokens.next(), Some((TokenKind::LessEqual, "<=")));
-        assert_eq!(tokens.next(), Some((TokenKind::GreaterEqual, ">=")));
-        assert_eq!(tokens.next(), Some((TokenKind::BangEqual, "!=")));
-        assert_eq!(tokens.next(), Some((TokenKind::Less, "<")));
-        assert_eq!(tokens.next(), Some((TokenKind::Greater, ">")));
-        assert_eq!(tokens.next(), Some((TokenKind::Slash, "/")));
-        assert_eq!(tokens.next(), Some((TokenKind::Dot, ".")));
+        assert_eq!(tokens.next(), Some((TokenKind::LEFT_PAREN, "(")));
+        assert_eq!(tokens.next(), Some((TokenKind::RIGHT_PAREN, ")")));
+        assert_eq!(tokens.next(), Some((TokenKind::LEFT_BRACE, "{")));
+        assert_eq!(tokens.next(), Some((TokenKind::RIGHT_BRACE, "}")));
+        assert_eq!(tokens.next(), Some((TokenKind::SEMICOLON, ";")));
+        assert_eq!(tokens.next(), Some((TokenKind::COMMA, ",")));
+        assert_eq!(tokens.next(), Some((TokenKind::PLUS, "+")));
+        assert_eq!(tokens.next(), Some((TokenKind::MINUS, "-")));
+        assert_eq!(tokens.next(), Some((TokenKind::STAR, "*")));
+        assert_eq!(tokens.next(), Some((TokenKind::BANG_EQUAL, "!=")));
+        assert_eq!(tokens.next(), Some((TokenKind::EQUAL_EQUAL, "==")));
+        assert_eq!(tokens.next(), Some((TokenKind::LESS_EQUAL, "<=")));
+        assert_eq!(tokens.next(), Some((TokenKind::GREATER_EQUAL, ">=")));
+        assert_eq!(tokens.next(), Some((TokenKind::BANG_EQUAL, "!=")));
+        assert_eq!(tokens.next(), Some((TokenKind::LESS, "<")));
+        assert_eq!(tokens.next(), Some((TokenKind::GREATER, ">")));
+        assert_eq!(tokens.next(), Some((TokenKind::SLASH, "/")));
+        assert_eq!(tokens.next(), Some((TokenKind::DOT, ".")));
+        assert_eq!(tokens.next(), Some((TokenKind::EOF, "")));
         assert_eq!(tokens.next(), None);
     }
 
@@ -406,40 +411,43 @@ mod tests {
 
         assert_eq!(
             tokens.next(),
-            Some((TokenKind::String { terminated: true }, r#""""#))
+            Some((TokenKind::STRING { terminated: true }, r#""""#))
         );
 
-        assert_eq!(tokens.next(), Some((TokenKind::Whitespace, " ")));
+        assert_eq!(tokens.next(), Some((TokenKind::WHITESPACE, " ")));
 
         assert_eq!(
             tokens.next(),
             Some((
-                TokenKind::String { terminated: true },
+                TokenKind::STRING { terminated: true },
                 r#""stringěščřžýáíé""#
             ))
         );
 
-        assert_eq!(tokens.next(), Some((TokenKind::Whitespace, " ")));
+        assert_eq!(tokens.next(), Some((TokenKind::WHITESPACE, " ")));
 
         assert_eq!(
             tokens.next(),
             Some((
-                TokenKind::String { terminated: false },
+                TokenKind::STRING { terminated: false },
                 r#""this string has no close quote"#
             ))
         );
 
+        assert_eq!(tokens.next(), Some((TokenKind::EOF, "")));
         assert_eq!(tokens.next(), None);
     }
 
     #[test]
     fn unknown() {
-        let mut tokens = tokenize_with_text("knowněščřžýáíéknown$");
+        let mut tokens = tokenize_with_text("knowněšknown$");
 
-        assert_eq!(tokens.next(), Some((TokenKind::Identifier, "known")));
-        assert_eq!(tokens.next(), Some((TokenKind::Unknown, "ěščřžýáíé")));
-        assert_eq!(tokens.next(), Some((TokenKind::Identifier, "known")));
-        assert_eq!(tokens.next(), Some((TokenKind::Unknown, "$")));
+        assert_eq!(tokens.next(), Some((TokenKind::IDENTIFIER, "known")));
+        assert_eq!(tokens.next(), Some((TokenKind::UNKNOWN, "ě")));
+        assert_eq!(tokens.next(), Some((TokenKind::UNKNOWN, "š")));
+        assert_eq!(tokens.next(), Some((TokenKind::IDENTIFIER, "known")));
+        assert_eq!(tokens.next(), Some((TokenKind::UNKNOWN, "$")));
+        assert_eq!(tokens.next(), Some((TokenKind::EOF, "")));
         assert_eq!(tokens.next(), None);
     }
 
@@ -447,13 +455,14 @@ mod tests {
     fn whitespace() {
         let mut tokens = tokenize_with_text("space    tabs\t\t\t\tnewlines\n\n\n\nend");
 
-        assert_eq!(tokens.next(), Some((TokenKind::Identifier, "space")));
-        assert_eq!(tokens.next(), Some((TokenKind::Whitespace, "    ")));
-        assert_eq!(tokens.next(), Some((TokenKind::Identifier, "tabs")));
-        assert_eq!(tokens.next(), Some((TokenKind::Whitespace, "\t\t\t\t")));
-        assert_eq!(tokens.next(), Some((TokenKind::Identifier, "newlines")));
-        assert_eq!(tokens.next(), Some((TokenKind::Whitespace, "\n\n\n\n")));
-        assert_eq!(tokens.next(), Some((TokenKind::Identifier, "end")));
+        assert_eq!(tokens.next(), Some((TokenKind::IDENTIFIER, "space")));
+        assert_eq!(tokens.next(), Some((TokenKind::WHITESPACE, "    ")));
+        assert_eq!(tokens.next(), Some((TokenKind::IDENTIFIER, "tabs")));
+        assert_eq!(tokens.next(), Some((TokenKind::WHITESPACE, "\t\t\t\t")));
+        assert_eq!(tokens.next(), Some((TokenKind::IDENTIFIER, "newlines")));
+        assert_eq!(tokens.next(), Some((TokenKind::WHITESPACE, "\n\n\n\n")));
+        assert_eq!(tokens.next(), Some((TokenKind::IDENTIFIER, "end")));
+        assert_eq!(tokens.next(), Some((TokenKind::EOF, "")));
         assert_eq!(tokens.next(), None);
     }
 }

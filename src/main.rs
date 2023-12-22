@@ -8,6 +8,8 @@ use std::{
 
 use lexer::tokenize_with_text;
 
+use crate::lexer::TokenKind;
+
 mod lexer;
 
 fn main() -> Result<()> {
@@ -23,14 +25,53 @@ fn main() -> Result<()> {
     }
 }
 
-fn run(source: &str) {
+fn report(line: usize, message: &str) {
+    eprintln!("[line {line}] Error: {message}");
+}
+
+fn run(source: &str) -> bool {
+    let mut line = 1;
+    let mut has_error = false;
+
     for (kind, text) in tokenize_with_text(source) {
-        println!("{kind:?} {text:?}");
+        if kind.is_multiline_token() {
+            line += text.bytes().filter(|c| *c == b'\n').count();
+        }
+
+        if kind.is_trivia_token() {
+            continue;
+        }
+
+        match kind {
+            TokenKind::NUMBER => {
+                println!(
+                    "NUMBER {text} {text}{}",
+                    if text.contains('.') { "" } else { ".0" }
+                );
+            }
+            TokenKind::STRING { terminated: true } => {
+                println!("STRING {text} {}", &text[1..text.len() - 1]);
+            }
+            TokenKind::STRING { terminated: false } => {
+                report(line, "Unterminated string.");
+                has_error = true;
+            }
+            TokenKind::UNKNOWN => {
+                report(line, "Unexpected character.");
+                has_error = true;
+            }
+            _ => println!("{kind:?} {text} null"),
+        }
     }
+
+    !has_error
 }
 
 fn run_file(path: &OsStr) -> Result<()> {
-    run(&read_to_string(path)?);
+    if !run(&read_to_string(path)?) {
+        exit(65);
+    }
+
     Ok(())
 }
 
